@@ -13,22 +13,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.9
-
-      - name: Install dependencies
+      - name: Set up Docker
         run: |
-          pip install -r requirements.txt
+          docker --version  # Ensure Docker is available
+          docker build -t my-fastapi-app .  # Build Docker image for your app
 
-      - name: Run tests
+      - name: Run tests inside Docker container
         run: |
-          pytest
+          docker run --rm my-fastapi-app pytest  # Run pytest inside Docker container
 
   deploy:
     runs-on: ubuntu-latest
-    needs: test  # Ensures deployment happens only after the tests pass
+    needs: test  # Ensures deployment happens only after tests pass
 
     steps:
       - name: Checkout repository
