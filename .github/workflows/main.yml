@@ -1,28 +1,53 @@
-name: ci pipeleine
+name: CD Pipeline
 
 on:
-  pull_request:
+  push:
     branches:
       - main
 
 jobs:
-  test:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
         with:
-          python-version: 3.9
+          host: ${{ secrets.SSH_HOST }}  # Your Azure VM IP address
+          username: ${{ secrets.SSH_USERNAME }}  # Your Azure VM username
+          key: ${{ secrets.SSH_PRIVATE_KEY }}  # Your private SSH key for the Azure VM
+          script: |
+            # Update package index and install dependencies
+            sudo apt-get update -y
+            sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
 
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+            # Add Docker's official GPG key
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - 
+            sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 
-      - name: Run tests
-        run: |
-          pytest
-# Testing workflow trigger
+            # Install Docker
+            sudo apt-get update -y
+            sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+
+            # Add the SSH user to the Docker group
+            sudo usermod -aG docker ${{ secrets.SSH_USERNAME }}
+
+            # Install Docker Compose
+            sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+            sudo chmod +x /usr/local/bin/docker-compose
+
+            # Verify installations
+            docker --version
+            docker-compose --version
+
+            # Navigate to the project directory and deploy
+            cd /home/ubuntu/fastapi-book-project 
+            git clone https://github.com/Qazim-tec/fastapi-book-project.git  # Your GitHub repository URL
+
+            cd fastapi-book-project  # Navigate to your project directory
+            git fetch origin main
+            git reset --hard origin/main  # Ensure the latest code is pulled
+            docker-compose up -d --build  # Rebuild and restart your Docker containers
