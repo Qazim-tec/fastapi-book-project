@@ -33,7 +33,9 @@ jobs:
             sudo apt-get install -y docker-ce docker-ce-cli containerd.io
 
             # Add the SSH user to the Docker group
-            sudo usermod -aG docker ${{ secrets.SSH_USERNAME }}
+            sudo usermod -aG docker $USER
+            sudo systemctl enable docker  # Enable Docker to start on boot
+            sudo systemctl start docker   # Start Docker service
 
             # Install Docker Compose
             sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
@@ -43,11 +45,20 @@ jobs:
             docker --version
             docker-compose --version
 
-            # Navigate to the project directory and deploy
-            cd /home/ubuntu/fastapi-book-project 
-            git clone https://github.com/Qazim-tec/fastapi-book-project.git  # Your GitHub repository URL
+            # Navigate to home directory
+            cd /home/ubuntu/
 
-            cd fastapi-book-project  # Navigate to your project directory
+            # Clone the repository only if it doesn't exist
+            if [ ! -d "fastapi-book-project" ]; then
+              git clone https://github.com/Qazim-tec/fastapi-book-project.git
+            fi
+
+            # Navigate to the project directory
+            cd fastapi-book-project
+
+            # Pull the latest changes
             git fetch origin main
             git reset --hard origin/main  # Ensure the latest code is pulled
-            docker-compose up -d --build  # Rebuild and restart your Docker containers
+
+            # Deploy with Docker Compose
+            docker-compose up -d --build  # Rebuild and restart Docker containers
